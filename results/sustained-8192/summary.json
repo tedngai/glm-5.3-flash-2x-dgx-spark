@@ -1,0 +1,62 @@
+[
+  {
+    "input_tokens": 512,
+    "concurrency": 1,
+    "successes": 1,
+    "peak_client_overlap": 1,
+    "manifest_sha256": "396720a3650e58adeb67a7ba0027458763dc104fe37823ad6ca76576b465d008",
+    "tokenizer_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d",
+    "effective_prefill_tps": 868.7153311987723,
+    "median_ttft_s": 0.5876678368076682,
+    "median_decode_tps": 35.89956456624187,
+    "errors": [],
+    "total_decode_tps": 37.13516848924268,
+    "shared_decode_tps_per_request": 37.13516848924268,
+    "shared_decode_seconds": 220.518724787049
+  },
+  {
+    "input_tokens": 512,
+    "concurrency": 4,
+    "successes": 4,
+    "peak_client_overlap": 4,
+    "manifest_sha256": "396720a3650e58adeb67a7ba0027458763dc104fe37823ad6ca76576b465d008",
+    "tokenizer_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d",
+    "effective_prefill_tps": 1291.9367681901404,
+    "median_ttft_s": 1.5835709479870275,
+    "median_decode_tps": 19.164130154224207,
+    "errors": [],
+    "total_decode_tps": 87.97849236820448,
+    "shared_decode_tps_per_request": 22.00336098589327,
+    "shared_decode_seconds": 371.9431774648838
+  },
+  {
+    "input_tokens": 512,
+    "concurrency": 8,
+    "successes": 8,
+    "peak_client_overlap": 8,
+    "manifest_sha256": "396720a3650e58adeb67a7ba0027458763dc104fe37823ad6ca76576b465d008",
+    "tokenizer_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d",
+    "effective_prefill_tps": 1764.8002251182324,
+    "median_ttft_s": 2.3185749985277653,
+    "median_decode_tps": 15.352425491628052,
+    "errors": [],
+    "total_decode_tps": 146.25801015848435,
+    "shared_decode_tps_per_request": 18.281972036366685,
+    "shared_decode_seconds": 447.65411432203837
+  },
+  {
+    "input_tokens": 400000,
+    "concurrency": 1,
+    "successes": 1,
+    "peak_client_overlap": 1,
+    "manifest_sha256": "396720a3650e58adeb67a7ba0027458763dc104fe37823ad6ca76576b465d008",
+    "tokenizer_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d",
+    "effective_prefill_tps": 2201.4191629308593,
+    "median_ttft_s": 181.6948281209916,
+    "median_decode_tps": 32.47706957291583,
+    "errors": [],
+    "total_decode_tps": 34.419474242338396,
+    "shared_decode_tps_per_request": 34.419474242338396,
+    "shared_decode_seconds": 237.91763762407936
+  }
+]

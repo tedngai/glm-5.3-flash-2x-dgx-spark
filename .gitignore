@@ -3,3 +3,6 @@ __pycache__/
 .env
 spark-vllm-docker/
 results/_test-*/
+results/*.log
+/*.log
+/metrics-*.txt

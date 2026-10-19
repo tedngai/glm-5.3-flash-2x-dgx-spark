@@ -249,12 +249,12 @@ def run() -> dict:
             "temperature": 0, "stream": False, "ignore_eos": True,
         }
         before = urllib.request.urlopen(API + "/metrics", timeout=20).read().decode()
-        hits_before = int(next(
+        hits_before = float(next(
             line.split()[-1] for line in before.splitlines()
             if line.startswith("vllm:prefix_cache_hits_total")))
         _, first_s = post("/v1/completions", body, timeout=600)
         after = urllib.request.urlopen(API + "/metrics", timeout=20).read().decode()
-        hits_after = int(next(
+        hits_after = float(next(
             line.split()[-1] for line in after.splitlines()
             if line.startswith("vllm:prefix_cache_hits_total")))
         _, second_s = post("/v1/completions", body, timeout=600)
@@ -266,17 +266,20 @@ def run() -> dict:
 
     try:
         ids = needle_prompt(NEEDLE_TOKENS)
-        body = {
-            "model": MODEL, "prompt": ids, "max_tokens": 128,
-            "temperature": 0, "stream": False,
-        }
-        reply, seconds = post("/v1/completions", body, timeout=1200)
-        content = reply["choices"][0].get("text") or ""
+        # The raw completion path tends to continue the reference text instead of
+        # answering the question. Use the chat template for a clean retrieval
+        # answer; the token-controlled prompt still fixes the haystack length.
+        text = TOK.decode(ids)
+        reply, seconds = chat(
+            [{"role": "user", "content": text}], max_tokens=512
+        )
+        content = reply["choices"][0]["message"].get("content") or ""
         usage = reply.get("usage", {})
-        ok = NEEDLE in content
+        ok = NEEDLE in content and len(content) < 300
         receipt = {
             "kind": "needle",
             "requested_tokens": NEEDLE_TOKENS,
+            "method": "chat",
             "prompt_tokens": usage.get("prompt_tokens"),
             "completion_tokens": usage.get("completion_tokens"),
             "seconds": seconds,
@@ -285,7 +288,7 @@ def run() -> dict:
             "model": MODEL,
             "tokenizer_sha256": hashlib.sha256(tokenizer_file.read_bytes()).hexdigest(),
         }
-        (RESULTS / "needle-195k.json").write_text(json.dumps(receipt, indent=2) + "\n")
+        (RESULTS / "needle-190k.json").write_text(json.dumps(receipt, indent=2) + "\n")
         record("needle_190k", ok, f"prompt_tokens={usage.get('prompt_tokens')} "
                f"answer={content!r}", seconds)
     except Exception as error:  # noqa: BLE001

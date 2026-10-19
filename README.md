@@ -23,11 +23,11 @@ separate milestones.
 | Engine | vLLM `0.1.dev21830+g8244d1c44` in `eugr/spark-vllm-b12x@sha256:03a956…3595`, B12X attention/MoE/linear/loader. |
 | API model ID | `nvidia/GLM-5.3-Flash-FP4-Local` |
 | Served context | **500,000 tokens** per request. The model's native window is 1,048,576; it is not enabled in this recipe. |
-| KV capacity | **1,617,857 tokens** at the measured start (453 blocks). Three 500k requests fit; eight do not. |
+| KV capacity | **1,617,857 tokens** at the measured start. Three 500k windows fit in principle; the matrix populated 1.2M tokens (6 × 200k, 3 × 400k). Eight 500k windows do not fit. |
 | Admission slots | `max-num-seqs 8`. The matrix records actual overlap; a requested C8 is not counted as eight streams without it. |
 | Speculative decoding | MTP with **one** draft token, `moe_backend=humming`, `attention_backend=B12X`. |
-| Speed | See the measured matrix in §4. Total shared-window decode scales from one to eight streams up to the tested 131k-input cells. |
-| Long context | 190k needle retrieval passed; 400k inputs are in the matrix; 496k near-limit is a separate receipt. |
+| Speed | 37-cell matrix in §4: 32.6–37.1 tok/s total decode for one stream; 86–146 tok/s at C8 depending on output budget; 2,150–2,440 tok/s prefill from 8k–400k. |
+| Long context | 400k row completed (C1/C2/C3, 181–373 s TTFT); 190k needle correct (190,012 prompt tokens); 496k single request passed at 230.7 s TTFT. |
 | Text, JSON, tools | Arithmetic, schema-constrained JSON and a tool-call/result round trip passed. |
 | Vision | Single-image red-square check passed. Multi-image ordering, video and tool-result media are not qualified. |
 | Anthropic Messages | `messages` and `count_tokens` pass. The 400 error envelope and chunked request bodies differ from Anthropic's shape. |
@@ -117,9 +117,10 @@ edited in place; the tuned copy is passed explicitly.
 
 **Capacity is not the same as context.** The KV pool holds 1,617,857 tokens.
 A single request can use up to 500,000; eight requests cannot each use 500,000.
-At 200k inputs the measured recipe admits six; at 400k it admits three. The
-matrix skips cells above 1.55M aggregate prompt tokens rather than allowing
-the scheduler to queue or retract them.
+At 200k inputs the measured recipe admits six (1.2M prompt tokens); at 400k it
+admits three (1.2M prompt tokens). The matrix skips cells above 1.55M
+aggregate prompt tokens rather than allowing the scheduler to queue or retract
+them, so 8 × 200k and 4 × 400k are intentionally absent.
 
 **Thinking-mode caveat.** The checkpoint's chat template opens a thinking
 block and offers only `reasoning_effort` `low`/`high`/`max`. The TensorFold
@@ -137,7 +138,55 @@ The requests use raw completions rather than the chat template so prompt and
 output lengths are exact; the chat-based A/B numbers in §5 are therefore not
 directly comparable to this table.
 
-<!-- MATRIX_SUMMARY -->
+**Measured matrix — 37 cells, 2,048 forced output tokens.** All 37 cells
+completed with the requested overlap and no errors. Total decode is 32–36
+tok/s for one stream, 50–62 tok/s at C2, 67–86 tok/s at C4, 64–80 tok/s at C6
+and 86–116 tok/s at C8. The C6 cells and 400k/C3 are not monotonic with the
+row above; because total decode is measured inside the common window, a more
+staggered wave can report a lower aggregate. Treat those cells as load-shape
+observations, not a clean concurrency-scaling curve. Prefill stays at 2,150–2,440 tok/s from
+8,192 to 400,000 input tokens; TTFT scales with input length and concurrency.
+No request was preempted (`vllm:num_preemptions_total` stayed at 0).
+
+| Input tokens/request | C | Effective prefill tok/s | Total decode tok/s | Decode/request tok/s | TTFT s | Shared decode s | Peak overlap | Success |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 512 | 1 | 845.1 | 36.3 | 36.3 | 0.6 | 56.3 | 1 | 1/1 |
+| 512 | 2 | 1348.1 | 62.0 | 31.0 | 0.8 | 66.0 | 2 | 2/2 |
+| 512 | 4 | 1266.4 | 75.6 | 18.9 | 1.6 | 108.0 | 4 | 4/4 |
+| 512 | 6 | 1551.8 | 79.5 | 13.4 | 2.0 | 152.2 | 6 | 6/6 |
+| 512 | 8 | 1519.8 | 116.2 | 14.5 | 2.7 | 140.5 | 8 | 8/8 |
+| 2,048 | 1 | 1784.3 | 35.5 | 35.5 | 1.1 | 57.7 | 1 | 1/1 |
+| 2,048 | 2 | 1838.2 | 54.3 | 27.2 | 2.2 | 75.2 | 2 | 2/2 |
+| 2,048 | 4 | 2395.2 | 86.1 | 21.5 | 3.4 | 95.0 | 4 | 4/4 |
+| 2,048 | 6 | 2153.0 | 69.7 | 11.8 | 5.6 | 172.3 | 6 | 6/6 |
+| 2,048 | 8 | 2234.4 | 96.4 | 12.2 | 7.3 | 167.2 | 8 | 8/8 |
+| 8,192 | 1 | 2349.4 | 35.9 | 35.9 | 3.5 | 56.9 | 1 | 1/1 |
+| 8,192 | 2 | 2318.4 | 51.4 | 25.7 | 7.0 | 77.5 | 2 | 2/2 |
+| 8,192 | 4 | 2299.1 | 71.9 | 18.3 | 14.0 | 111.4 | 4 | 4/4 |
+| 8,192 | 6 | 2286.1 | 70.5 | 11.9 | 19.2 | 170.7 | 6 | 6/6 |
+| 8,192 | 8 | 2294.4 | 101.8 | 12.8 | 22.7 | 158.3 | 8 | 8/8 |
+| 32,768 | 1 | 2434.5 | 34.6 | 34.6 | 13.5 | 59.2 | 1 | 1/1 |
+| 32,768 | 2 | 2384.6 | 50.9 | 25.5 | 22.1 | 78.0 | 2 | 2/2 |
+| 32,768 | 4 | 2361.1 | 70.4 | 17.9 | 44.4 | 112.7 | 4 | 4/4 |
+| 32,768 | 6 | 2351.5 | 64.9 | 10.7 | 58.3 | 176.6 | 6 | 6/6 |
+| 32,768 | 8 | 2344.3 | 96.7 | 12.4 | 72.3 | 161.5 | 8 | 8/8 |
+| 65,536 | 1 | 2440.0 | 35.7 | 35.7 | 26.9 | 57.4 | 1 | 1/1 |
+| 65,536 | 2 | 2386.8 | 50.5 | 25.2 | 42.6 | 79.7 | 2 | 2/2 |
+| 65,536 | 4 | 2362.8 | 67.9 | 17.0 | 78.8 | 114.1 | 4 | 4/4 |
+| 65,536 | 6 | 2350.7 | 65.5 | 10.9 | 106.7 | 176.8 | 6 | 6/6 |
+| 65,536 | 8 | 2343.1 | 85.9 | 10.6 | 134.3 | 173.9 | 8 | 8/8 |
+| 131,072 | 1 | 2365.5 | 35.3 | 35.3 | 55.4 | 57.9 | 1 | 1/1 |
+| 131,072 | 2 | 2351.1 | 52.5 | 26.2 | 84.9 | 76.5 | 2 | 2/2 |
+| 131,072 | 4 | 2323.6 | 67.1 | 16.8 | 150.0 | 112.0 | 4 | 4/4 |
+| 131,072 | 6 | 2313.2 | 64.3 | 10.7 | 206.7 | 176.4 | 6 | 6/6 |
+| 131,072 | 8 | 2298.0 | 91.5 | 11.7 | 263.8 | 155.2 | 8 | 8/8 |
+| 200,000 | 1 | 2353.0 | 35.4 | 35.4 | 85.0 | 57.8 | 1 | 1/1 |
+| 200,000 | 2 | 2308.5 | 50.0 | 25.0 | 131.9 | 79.3 | 2 | 2/2 |
+| 200,000 | 4 | 2286.6 | 71.4 | 17.9 | 223.5 | 103.4 | 4 | 4/4 |
+| 200,000 | 6 | 2268.8 | 67.2 | 11.4 | 312.4 | 157.7 | 6 | 6/6 |
+| 400,000 | 1 | 2204.8 | 32.6 | 32.6 | 181.4 | 62.7 | 1 | 1/1 |
+| 400,000 | 2 | 2176.2 | 51.9 | 26.0 | 276.4 | 75.0 | 2 | 2/2 |
+| 400,000 | 3 | 2156.9 | 48.5 | 16.6 | 373.4 | 111.3 | 3 | 3/3 |
 
 **Reading the table.** Effective prefill includes queueing and any mixed
 decode work until the last request receives its first token. Total decode is
@@ -147,7 +196,38 @@ its product with concurrency need not equal the total. TTFT is the median time
 to first token. Peak overlap is the observed number of simultaneously active
 clients, not the requested concurrency.
 
-<!-- SUSTAINED_SUMMARY -->
+**Sustained 8,192-token output check.** Four representative cells were rerun
+with 8,192 forced output tokens. Long outputs raise the steady-state aggregate
+at C4 and C8 relative to the 2,048-token sweep; C1 stays within noise. The
+2,048 matrix is therefore a conservative short-window view, not an inflated
+one.
+
+| Input tokens/request | C | Total decode tok/s | Decode/request tok/s | TTFT s | Shared decode s | Success |
+|---:|---:|---:|---:|---:|---:|---:|
+| 512 | 1 | 37.1 | 37.1 | 0.6 | 220.5 | 1/1 |
+| 512 | 4 | 88.0 | 22.0 | 1.6 | 371.9 | 4/4 |
+| 512 | 8 | 146.3 | 18.3 | 2.3 | 447.7 | 8/8 |
+| 400,000 | 1 | 34.4 | 34.4 | 181.7 | 237.9 | 1/1 |
+
+**Repeatability check.** The 512-token row was rerun in a separate directory
+with the same launch and prompts.
+
+| C | First run total decode | Repeat total decode | Delta |
+|---:|---:|---:|---:|
+| 1 | 36.3 | 35.9 | −1.1% |
+| 2 | 62.0 | 60.4 | −2.5% |
+| 4 | 75.6 | 80.8 | +6.8% |
+| 6 | 79.5 | 76.3 | −4.0% |
+| 8 | 116.2 | 116.7 | +0.5% |
+
+C1/C2/C6/C8 repeat inside the protocol's 5% noise band. C4 is the widest
+spread (+6.8%), so its aggregate should be read with a wider band than the
+other cells.
+
+**Near-limit check.** A single **496,000-token** input with 1,024 forced output
+tokens completed in the 500k window: TTFT **230.7 s** (2,149 tok/s effective
+prefill), total decode **34.5 tok/s**, shared decode window 29.6 s. This is a
+usable-window receipt, not a quality score.
 
 ## 5. Experiment history
 
@@ -205,7 +285,17 @@ over stock in that chat harness.
 
 ## 6. Feature and controller acceptance
 
-<!-- FEATURE_TABLE -->
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Health / models | pass | `/health` 200; `nvidia/GLM-5.3-Flash-FP4-Local` listed |
+| Arithmetic | pass | `19 + 23` → `42` |
+| JSON schema | pass | `{"city":"Paris","temperature_c":18,"conditions":"Partly cloudy"}` |
+| Tool call + result | pass | `get_weather({"city":"Paris"})` → `22°C, sunny` |
+| Single-image vision | pass | red square → `Red` |
+| Anthropic count_tokens | pass | 14 input tokens |
+| Anthropic messages | pass | one-word reply `Hello.` |
+| Prompt reuse, 32k tokens | pass | 13.83 s first → 0.49 s second |
+| Needle, 190k tokens | pass | 190,012 prompt tokens; passphrase `violet-harbor-7291` found |
 
 The checks above are smoke acceptance on one boot. They do not establish
 quality, multi-image reliability, video support, or production readiness.
@@ -233,10 +323,11 @@ CONCURRENCIES=1,2,4,6,8 \
 python3 benchmarks/matrix.py
 ```
 
-Recompute the table from the saved token events at any time:
+Recompute the table from the saved token events at any time, refresh the
+stable receipts and run the structural audit:
 
 ```bash
-python3 benchmarks/common_window.py results/matrix-<timestamp>
+./benchmarks/finalize.sh results/matrix-<timestamp>
 ```
 
 Run the feature checks only when the matrix is idle:
@@ -259,7 +350,7 @@ The harness writes:
 - `results/matrix-<timestamp>/summary.json` — one row per completed cell.
 - `results/matrix-<timestamp>/TABLE.md` — the rendered table.
 - `results/feature-acceptance.json` — smoke results and excerpts.
-- `results/needle-195k.json` — long-context retrieval receipt.
+- `results/needle-190k.json` — long-context retrieval receipt.
 
 ## 8. Provenance
 

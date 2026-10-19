@@ -1,0 +1,75 @@
+{
+  "captured_at": "2026-10-19T15:05:27+0000",
+  "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+  "api": "http://127.0.0.1:8000",
+  "checks": [
+    {
+      "name": "health",
+      "status": "pass",
+      "detail": "HTTP 200",
+      "seconds": 0.006364107131958008
+    },
+    {
+      "name": "models",
+      "status": "pass",
+      "detail": "served ids: ['nvidia/GLM-5.3-Flash-FP4-Local']",
+      "seconds": 0.00043129920959472656
+    },
+    {
+      "name": "arithmetic_19_plus_23",
+      "status": "pass",
+      "detail": "content='42'",
+      "seconds": 0.19161272048950195
+    },
+    {
+      "name": "json_schema",
+      "status": "pass",
+      "detail": "content='{\"city\":\"Paris\",\"temperature_c\":18,\"conditions\":\"Partly cloudy\"}'",
+      "seconds": 1.0705814361572266
+    },
+    {
+      "name": "tool_call_request",
+      "status": "pass",
+      "detail": "[{\"id\": \"chatcmpl-tool-b51b318b05b1b34b\", \"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"arguments\": \"{\\\"city\\\": \\\"Paris\\\"}\"}}]",
+      "seconds": 0.44557690620422363
+    },
+    {
+      "name": "tool_call_round_trip",
+      "status": "pass",
+      "detail": "content='The weather in Paris is currently sunny with a temperature of 22\u00b0C.'",
+      "seconds": 0.5154299736022949
+    },
+    {
+      "name": "vision_single_red_square",
+      "status": "pass",
+      "detail": "content='Red'",
+      "seconds": 0.2415018081665039
+    },
+    {
+      "name": "anthropic_count_tokens",
+      "status": "pass",
+      "detail": "{\"input_tokens\": 14, \"context_management\": {\"original_input_tokens\": 14}}",
+      "seconds": 0.0016510486602783203
+    },
+    {
+      "name": "anthropic_messages",
+      "status": "pass",
+      "detail": "[{\"type\": \"thinking\", \"thinking\": \"The user wants me to say hello in one word. That's simple - \\\"Hello\\\" is one word. Or I could say \\\"Hi\\\" or \\\"Greetings\\\" or \\\"Hey\\\". Any of these work as a one-word greeting.\\n\\nThe instruction is clear: say hello in one word. So my response should literally just be one word that serves as a greeting.\\n\\nThe most natural answer: \\\"Hello.\\\"\", \"signature\": \"d2b7dfb788514d7a98cb00171741d4b9\"}, {\"type\": \"text\", \"text\": \"Hello.\"}]",
+      "seconds": 2.880002975463867
+    },
+    {
+      "name": "prompt_reuse_32k",
+      "status": "pass",
+      "detail": "first=13.83s second=0.49s cache_hits=72581451.0->72581451.0",
+      "seconds": 0.4902322292327881
+    },
+    {
+      "name": "needle_190k",
+      "status": "pass",
+      "detail": "prompt_tokens=190012 answer='violet-harbor-7291'",
+      "seconds": 82.52325868606567
+    }
+  ],
+  "passed": 11,
+  "total": 11
+}
