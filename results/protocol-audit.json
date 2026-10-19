@@ -1,0 +1,9 @@
+{
+  "matrix": "results/matrix-20261019T0708Z",
+  "manifest_sha256": "396720a3650e58adeb67a7ba0027458763dc104fe37823ad6ca76576b465d008",
+  "cases": 37,
+  "requests_checked": 145,
+  "failures": [],
+  "warnings": [],
+  "status": "pass"
+}

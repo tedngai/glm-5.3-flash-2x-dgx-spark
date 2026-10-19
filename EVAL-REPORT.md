@@ -104,5 +104,5 @@ Full copy-paste restart/switch guide (both stacks, post-reboot checks): **`RESTA
 - `needle-vllm.py`, `end_of_turn-vllm.py`, `bench_decode.py` (minimally patched copies
   for vLLM; originals in `~/data/glm53-flash-tensorfold/tools`)
 
-Note: `~/.cache/huggingface/token` is stale — `hf auth login --force` recommended
-(a valid token currently lives in the project `.env` files).
+Note: `~/.cache/huggingface/token` was stale during the A/B — refresh it with
+`hf auth login --force` if a download needs authentication.

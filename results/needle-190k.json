@@ -1,0 +1,12 @@
+{
+  "kind": "needle",
+  "requested_tokens": 190000,
+  "method": "chat",
+  "prompt_tokens": 190012,
+  "completion_tokens": 31,
+  "seconds": 82.52325868606567,
+  "answer": "violet-harbor-7291",
+  "correct": true,
+  "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+  "tokenizer_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d"
+}

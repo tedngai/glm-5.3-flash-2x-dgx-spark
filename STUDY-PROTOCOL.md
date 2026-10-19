@@ -27,6 +27,8 @@ forced-output sweep is not evidence of answer quality.
   400,000 input tokens at the highest concurrency that fits the measured KV
   pool, with 2,048 forced output tokens per request. Cells above 1.55M
   aggregate prompt tokens are skipped rather than allowed to queue or retract.
+  The published set is 37 cells: C1/C2/C4/C6/C8 for 512–131,072, C1/C2/C4/C6
+  for 200,000, and C1/C2/C3 for 400,000.
 - Sustained check: 8,192 forced output tokens at representative cells. The
   129-641 token window is used for per-request decode rate so startup and
   prefill do not dominate the number.
@@ -59,7 +61,7 @@ not mistaken for eight simultaneously active streams.
 | Order | Experiment | Gate |
 |---|---|---|
 | 1 | Reproduce the tuned profile | All matrix cells complete; no errors, no retractions, actual overlap recorded. |
-| 2 | Repeat key cells | 512/C1, 512/C8, 8,192/C8 and 400,000/C1 repeated; differences under 5% are treated as noise. |
+| 2 | Repeat key cells | The 512 row was repeated; C1/C2/C6/C8 were within 5%, C4 was +6.8%. Repeats at 8,192/C8 and 400,000/C1 remain open. Differences under 5% are treated as noise. |
 | 3 | Stock vs tuned | Same boot and prompts for MTP 5 / seqs 4 / batched 4096 vs the published tuned profile. |
 | 4 | Thinking-off template | The shipped chat template always opens a thinking block; a modified template is required for a fair chat-decode comparison. |
 | 5 | Context ceiling | Raise `max-model-len` toward the model's native 1,048,576 only after long-context memory and quality checks. The current recipe stops at 500,000. |
