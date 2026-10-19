@@ -1,0 +1,82 @@
+# Recipe: GLM-5.3-Flash-FP4-Local (tuned, 2x DGX Spark)
+#
+# Tuned profile measured in this repository. It changes only three settings from
+# the upstream `glm-5.3-flash.yaml` recipe:
+#   - max_num_seqs:            4 -> 8
+#   - max_num_batched_tokens: 4096 -> 8192
+#   - num_speculative_tokens:     5 -> 1
+#
+# The model is NVIDIA's pre-quantized FP4-Local checkpoint served by the B12X
+# vLLM build. The recipe is cluster-only: the head and worker are joined over
+# the ConnectX-7 link, with TP2 across the two GB10 systems.
+
+recipe_version: "1"
+name: GLM-5.3-Flash-FP4-Local-Tuned
+description: vLLM/B12X serving nvidia/GLM-5.3-Flash-FP4-Local on two DGX Sparks, MTP 1, 8 slots
+
+model: nvidia/GLM-5.3-Flash-FP4-Local
+container: vllm-node-b12x
+
+build_args:
+  - --exp-b12x
+
+cluster_only: true
+
+mods: []
+
+defaults:
+  port: 8000
+  host: 0.0.0.0
+  tensor_parallel: 2
+  decode_context_parallel: 1
+  block_size: 256
+  max_model_len: 500000
+  max_num_seqs: 8
+  max_num_batched_tokens: 8192
+  num_speculative_tokens: 1
+  kv_cache_memory_bytes: 8G
+  gpu_memory_utilization: 0.87
+
+env:
+  CUTE_DSL_ARCH: "sm_121a"
+  SAFETENSORS_FAST_GPU: "1"
+  VLLM_ENABLE_ROCE_ALLREDUCE: "1"
+  VLLM_ROCE_ALLREDUCE_MAX_SIZE: "2MB"
+  NCCL_BUFFSIZE: "1048576"
+  NCCL_MAX_CTAS: "8"
+  VLLM_WORKER_MULTIPROC_METHOD: "spawn"
+  VLLM_SSM_CONV_STATE_LAYOUT: "DS"
+  VLLM_USE_AOT_COMPILE: "1"
+  VLLM_USE_MEGA_AOT_ARTIFACT: "1"
+  VLLM_USE_V2_MODEL_RUNNER: "1"
+  VLLM_ENABLE_PCIE_ALLREDUCE: "0"
+  B12X_POLICY_MODE: "auto"
+  VLLM_B12X_MOE_FP4_FORCE_A16: "1"
+  B12X_W4A16_A4_PREFILL: "1"
+
+command: |
+  vllm serve nvidia/GLM-5.3-Flash-FP4-Local \
+    --host {host} \
+    --port {port} \
+    --tensor-parallel-size {tensor_parallel} \
+    --decode-context-parallel-size {decode_context_parallel} \
+    --mamba-cache-mode align \
+    --enable-prefix-caching \
+    --enable-chunked-prefill \
+    --dtype bfloat16 \
+    --kv-cache-dtype fp8 \
+    --quantization modelopt_mixed \
+    --attention-backend B12X \
+    --block-size {block_size} \
+    --moe-backend b12x \
+    --linear-backend b12x \
+    --no-enable-flashinfer-autotune \
+    --load-format b12x \
+    --max-model-len {max_model_len} \
+    --max-num-seqs {max_num_seqs} \
+    --max-num-batched-tokens {max_num_batched_tokens} \
+    --speculative-config '{{"method":"mtp","num_speculative_tokens":{num_speculative_tokens},"moe_backend":"humming","attention_backend":"B12X"}}' \
+    --reasoning-parser glm45 \
+    --tool-call-parser glm47 \
+    --enable-auto-tool-choice \
+    --gpu-memory-utilization {gpu_memory_utilization}
